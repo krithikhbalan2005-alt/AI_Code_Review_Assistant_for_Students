@@ -5,7 +5,7 @@ import { auth, db } from '../lib/firebase';
 import { useToast } from '../components/ToastContext';
 import { Code2, Upload, FileText, Play, AlertTriangle, ShieldCheck } from 'lucide-react';
 
-const SUPPORTED_LANGUAGES = ['C', 'C++', 'Java', 'Python', 'JavaScript', 'PHP', 'Mixed / Multi-Language'];
+const SUPPORTED_LANGUAGES = ['C', 'C++', 'Java', 'Python', 'JavaScript', 'PHP', 'Others'];
 const SUPPORTED_EXTENSIONS = ['.js', '.py', '.java', '.cpp', '.c', '.php', '.txt'];
 const MAX_FILE_SIZE_MB = 5;
 
