@@ -327,7 +327,6 @@ export default function ReviewResult() {
                 <Code2 className="h-4 w-4 text-purple-400" />
                 Corrected Code (Error Removed)
               </span>
-
               <button 
                 onClick={() => copyToClipboard(report.optimizedCode, 'optimized')}
                 className="text-slate-400 hover:text-slate-200 transition-colors p-1 flex items-center gap-1 text-xs"
@@ -336,13 +335,13 @@ export default function ReviewResult() {
                 Copy Solution
               </button>
             </div>
-            <pre className="p-5 overflow-x-auto text-xs code-font text-slate-300 bg-slate-950/60 leading-relaxed max-h-96">
+            <pre className="p-5 overflow-x-auto text-xs code-font text-slate-300 bg-slate-950/60 leading-relaxed max-h-[500px] min-h-[200px]">
               <code>{report.optimizedCode}</code>
             </pre>
           </div>
 
           {/* Original Student Code Display */}
-          <div className="glass-panel rounded-xl overflow-hidden border border-slate-800 opacity-80">
+          <div className="glass-panel rounded-xl overflow-hidden border border-slate-800 opacity-50">
             <div className="bg-dark-900/80 border-b border-slate-800/80 px-4 py-3 flex items-center justify-between">
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono flex items-center gap-1.5">
                 Original Submitted Code
@@ -355,7 +354,7 @@ export default function ReviewResult() {
                 Copy Original
               </button>
             </div>
-            <pre className="p-5 overflow-x-auto text-xs code-font text-slate-400 bg-slate-950/40 leading-relaxed max-h-64">
+            <pre className="p-4 overflow-x-auto text-xs code-font text-slate-400 bg-slate-950/40 leading-relaxed max-h-32">
               <code>{report.originalCode}</code>
             </pre>
           </div>
@@ -366,3 +365,4 @@ export default function ReviewResult() {
     </div>
   );
 }
+
