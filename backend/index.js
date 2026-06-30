@@ -41,8 +41,33 @@ app.post('/api/review-code', async (req, res) => {
         beginnerExplanation: `Hey student! Your code written in ${language} is a solid start. To make it even better, try renaming variables to descriptive names and add docstrings/comments so others can read your work. Keep practicing!`
       };
 
+      // Mock tutor optimization for calculate_average
+      if (language === 'Python' && (codeText.includes('calculate_average') || codeText.includes('marks'))) {
+        mockResult.score = 85;
+        mockResult.bugs = [
+          "IndexError: list index out of range. The loop 'range(len(marks) + 1)' accesses an index equal to the list size, which causes a crash."
+        ];
+        mockResult.suggestions = [
+          "Change the range limits from 'range(len(marks) + 1)' to 'range(len(marks))' to avoid boundary errors.",
+          "Instead of manual looping, you can simplify the logic by using Python's built-in sum() function: 'sum(marks) / len(marks)'."
+        ];
+        mockResult.optimizedCode = `def calculate_average(marks):
+    total = 0
+    
+    # Corrected loop bounds to avoid IndexError
+    for i in range(len(marks)):
+        total += marks[i]
+        
+    average = total / len(marks)
+    return average
+
+student_marks = [80, 90, 75, 85]
+print("Average:", calculate_average(student_marks))`;
+        mockResult.complexityAnalysis = "Time Complexity: O(N) where N is the number of elements.\nSpace Complexity: O(1) auxiliary variable space.";
+        mockResult.beginnerExplanation = "Hello student! Your function calculate_average contains a common index bug: in Python, list indexes start at 0 and end at len(marks) - 1. By looping over range(len(marks) + 1), your code attempts to access marks[len(marks)], which does not exist and throws an IndexError. Removing '+ 1' fixes this perfectly! You can also use sum(marks) / len(marks) for a cleaner solution.";
+      }
       // Mock tutor optimization for a standard loop sum program in Python
-      if (language === 'Python' && (codeText.includes('for i in range') || codeText.includes('calculate_sum'))) {
+      else if (language === 'Python' && (codeText.includes('for i in range') || codeText.includes('calculate_sum'))) {
         mockResult.score = 95;
         mockResult.bugs = ["Manual looping is slower than mathematical direct calculations or built-in range operators."];
         mockResult.suggestions = [
@@ -53,6 +78,7 @@ app.post('/api/review-code', async (req, res) => {
         mockResult.complexityAnalysis = "Time Complexity: O(1) using algebraic summation (or O(N) built-in loop optimizations).\nSpace Complexity: O(1) space.";
         mockResult.beginnerExplanation = "Hello! Instead of writing a manual 'for' loop to add numbers, Python offers a built-in sum() function. Using sum(range(n)) runs much faster because it executes optimized code under the hood. For even faster execution, you can calculate the sum in constant time using standard algebra!";
       }
+
 
       return res.json(mockResult);
     }
