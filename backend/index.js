@@ -67,10 +67,11 @@ Your analysis must be returned strictly in the following JSON format:
   "bugs": [<string describing syntax/logic bug 1>, <string describing syntax/logic bug 2>],
   "suggestions": [<string describing best practice / style suggestion 1>, <string describing best practice / style suggestion 2>],
   "securityIssues": [<string describing potential security vulnerability 1>, ...],
-  "optimizedCode": <string containing the corrected and optimized version of the code, properly indented and using clean coding standards. If no optimizations needed, return the original code>,
+  "optimizedCode": <string containing the COMPLETE corrected and optimized version of the entire submitted code file, properly formatted and indented. Do NOT just return the modified lines, changed functions, or diff blocks; you MUST return the FULL code file in its entirety with the corrections applied, so the student can easily copy and paste the entire file. If no changes are needed, return the original code in full.>,
   "complexityAnalysis": <string with brief time and space complexity explanations, e.g. "Time Complexity: O(n), Space Complexity: O(1) because...">,
   "beginnerExplanation": <string containing a simple, friendly, easy-to-understand tutorial explanation of how the code works, what issues were found, and why the corrections help their learning>
 }
+
 
 Important Instructions:
 1. Do not run, execute, or compile the code. Treat it strictly as text.
