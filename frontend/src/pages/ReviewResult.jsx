@@ -176,7 +176,8 @@ export default function ReviewResult() {
       printSection("3. Security Auditing", report.securityIssues);
       printSection("4. Time & Space Complexity", report.complexityAnalysis);
       printSection("5. Learning Explanations (Tutor Notes)", report.beginnerExplanation);
-      printSection("6. Optimized Code Suggestion", report.optimizedCode, true);
+      printSection("6. Corrected Code (Error Removed)", report.optimizedCode, true);
+
 
       doc.save(`CodeReview_Report_${reportId.substring(0, 8)}.pdf`);
       showToast('Report downloaded successfully', 'success');
@@ -319,13 +320,14 @@ export default function ReviewResult() {
             
           </div>
 
-          {/* Optimized Code Display */}
+          {/* Corrected Code Display */}
           <div className="glass-panel rounded-xl overflow-hidden border border-slate-800">
             <div className="bg-dark-900/80 border-b border-slate-800/80 px-4 py-3 flex items-center justify-between">
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono flex items-center gap-1.5">
                 <Code2 className="h-4 w-4 text-purple-400" />
-                Optimized Code Solution
+                Corrected Code (Error Removed)
               </span>
+
               <button 
                 onClick={() => copyToClipboard(report.optimizedCode, 'optimized')}
                 className="text-slate-400 hover:text-slate-200 transition-colors p-1 flex items-center gap-1 text-xs"

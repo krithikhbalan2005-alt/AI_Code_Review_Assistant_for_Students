@@ -163,7 +163,8 @@ export default function History() {
       printSection("3. Security Auditing", report.securityIssues);
       printSection("4. Time & Space Complexity", report.complexityAnalysis);
       printSection("5. Learning Explanations (Tutor Notes)", report.beginnerExplanation);
-      printSection("6. Optimized Code Suggestion", report.optimizedCode, true);
+      printSection("6. Corrected Code (Error Removed)", report.optimizedCode, true);
+
 
       pdf.save(`CodeReview_Report_${reportId.substring(0, 8)}.pdf`);
       showToast('Report downloaded successfully', 'success');
