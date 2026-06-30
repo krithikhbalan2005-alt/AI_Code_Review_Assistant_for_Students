@@ -1,0 +1,35 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{userId} {
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /codeSubmissions/{submissionId} {
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid;
+
+      allow read, update, delete: if request.auth != null
+        && resource.data.userId == request.auth.uid;
+    }
+
+    match /reviewReports/{reportId} {
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid;
+
+      allow read, update, delete: if request.auth != null
+        && resource.data.userId == request.auth.uid;
+    }
+
+    match /reviewHistory/{historyId} {
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid;
+
+      allow read, update, delete: if request.auth != null
+        && resource.data.userId == request.auth.uid;
+    }
+  }
+}
