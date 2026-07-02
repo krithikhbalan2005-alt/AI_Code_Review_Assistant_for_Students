@@ -243,6 +243,8 @@ ${codeText}`;
     console.error('Unhandled server error during code review:', error);
     return res.status(500).json({ error: `Server error: ${error.message}` });
   }
+});
+
 // Temporary Debug Endpoint to list available models
 app.get('/api/list-models', async (req, res) => {
   try {
