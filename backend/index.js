@@ -243,6 +243,29 @@ ${codeText}`;
     console.error('Unhandled server error during code review:', error);
     return res.status(500).json({ error: `Server error: ${error.message}` });
   }
+// Temporary Debug Endpoint to list available models
+app.get('/api/list-models', async (req, res) => {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(400).json({ error: 'GEMINI_API_KEY is not configured.' });
+    }
+    
+    // Masked key info for verification
+    const maskedKey = apiKey.substring(0, 6) + '...' + apiKey.substring(apiKey.length - 4);
+    
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+    );
+    
+    const data = await response.json();
+    return res.json({
+      maskedKey,
+      data
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
 });
 
 // Start Server
