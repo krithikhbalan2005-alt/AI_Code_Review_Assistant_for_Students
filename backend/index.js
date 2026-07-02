@@ -5,7 +5,37 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// Configure CORS to allow the frontend Vercel URL dynamically via FRONTEND_URL environment variable
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, or server-to-server)
+    if (!origin) return callback(null, true);
+    
+    // If FRONTEND_URL is not set, allow all origins
+    if (!process.env.FRONTEND_URL) {
+      return callback(null, true);
+    }
+
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (allowed === '*') return true;
+      return origin === allowed || origin.startsWith(allowed);
+    });
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error(`Origin ${origin} not allowed by CORS`));
+    }
+  },
+  credentials: true
+}));
+
 app.use(express.json());
 
 // Main Code Review Endpoint
@@ -37,6 +67,11 @@ app.post('/api/review-code', async (req, res) => {
           "No immediate safety vulnerabilities found in this snippet. Ensure dynamic inputs are sanitized."
         ],
         optimizedCode: codeText,
+        fullCorrectedCode: codeText,
+        changesMade: [
+          "No logic errors detected, so original code structure was preserved in full.",
+          "Added basic comments to demonstrate structure analysis."
+        ],
         complexityAnalysis: "Time Complexity: O(N) typical iteration traversal.\nSpace Complexity: O(1) auxiliary variable space.",
         beginnerExplanation: `Hey student! Your code written in ${language} is a solid start. To make it even better, try renaming variables to descriptive names and add docstrings/comments so others can read your work. Keep practicing!`
       };
@@ -52,9 +87,11 @@ app.post('/api/review-code', async (req, res) => {
           "Instead of manual looping, you can simplify the logic by using Python's built-in sum() function: 'sum(marks) / len(marks)'."
         ];
         mockResult.optimizedCode = `def calculate_average(marks):
+    return sum(marks) / len(marks)`;
+        mockResult.fullCorrectedCode = `def calculate_average(marks):
     total = 0
     
-    # Corrected loop bounds to avoid IndexError
+    # Corrected: Changed range limit to range(len(marks)) to avoid IndexError out-of-bounds
     for i in range(len(marks)):
         total += marks[i]
         
@@ -63,6 +100,10 @@ app.post('/api/review-code', async (req, res) => {
 
 student_marks = [80, 90, 75, 85]
 print("Average:", calculate_average(student_marks))`;
+        mockResult.changesMade = [
+          "Fixed loop condition from range(len(marks) + 1) to range(len(marks)) to avoid IndexError out-of-bounds crash.",
+          "Preserved the overall code accumulator structure to verify correctness."
+        ];
         mockResult.complexityAnalysis = "Time Complexity: O(N) where N is the number of elements.\nSpace Complexity: O(1) auxiliary variable space.";
         mockResult.beginnerExplanation = "Hello student! Your function calculate_average contains a common index bug: in Python, list indexes start at 0 and end at len(marks) - 1. By looping over range(len(marks) + 1), your code attempts to access marks[len(marks)], which does not exist and throws an IndexError. Removing '+ 1' fixes this perfectly! You can also use sum(marks) / len(marks) for a cleaner solution.";
       }
@@ -75,35 +116,43 @@ print("Average:", calculate_average(student_marks))`;
           "Use arithmetic series sum formula (n * (n - 1) / 2) for constant time execution."
         ];
         mockResult.optimizedCode = "def calculate_sum(n):\n    \"\"\"Sum numbers up to n-1 using standard range sum functionality.\"\"\"\n    return sum(range(n))";
+        mockResult.fullCorrectedCode = `def calculate_sum(n):
+    # Corrected: Replaced loop with optimized built-in sum range
+    return sum(range(n))`;
+        mockResult.changesMade = [
+          "Replaced manual loop accumulator with high-performance sum(range(n)) syntax."
+        ];
         mockResult.complexityAnalysis = "Time Complexity: O(1) using algebraic summation (or O(N) built-in loop optimizations).\nSpace Complexity: O(1) space.";
         mockResult.beginnerExplanation = "Hello! Instead of writing a manual 'for' loop to add numbers, Python offers a built-in sum() function. Using sum(range(n)) runs much faster because it executes optimized code under the hood. For even faster execution, you can calculate the sum in constant time using standard algebra!";
       }
 
-
       return res.json(mockResult);
     }
 
-
     // Design the prompt for a friendly programming tutor/AI reviewer
-    const prompt = `You are a supportive, friendly, and expert programming tutor and code review assistant for students.
-Analyze the following code written in ${language}.
+    const prompt = `You are an expert code review and code correction assistant for students.
+The user will submit code written in ${language}. Sometimes it may contain a single language, sometimes mixed languages.
+Review the code, identify issues, and return a complete corrected version.
+
 Your analysis must be returned strictly in the following JSON format:
 {
   "score": <number between 0 and 100 representing code quality, syntax, and design>,
   "bugs": [<string describing syntax/logic bug 1>, <string describing syntax/logic bug 2>],
   "suggestions": [<string describing best practice / style suggestion 1>, <string describing best practice / style suggestion 2>],
   "securityIssues": [<string describing potential security vulnerability 1>, ...],
-  "optimizedCode": <string containing the COMPLETE corrected and optimized version of the entire submitted code file, properly formatted and indented. You MUST return the FULL code file in its entirety with the corrections applied (so the student can copy and paste the entire file). Additionally, you MUST add a comment (e.g., '# Corrected: <explanation>' or '// Corrected: <explanation>' depending on the programming language) directly above or next to the specific lines that you modified, so the student can easily see what was changed inside the full code. If no changes are needed, return the original code in full.>,
-  "complexityAnalysis": <string with brief time and space complexity explanations, e.g. "Time Complexity: O(n), Space Complexity: O(1) because...">,
+  "optimizedCode": <string containing an alternative optimized approach or algorithm for the problem (optional, else same as fullCorrectedCode)>,
+  "fullCorrectedCode": <string containing the COMPLETE corrected and operational version of the user's entire original submitted code file. You MUST return the FULL code file in its entirety with the corrections applied (so the student can directly copy and paste the entire file into VS Code). Do NOT omit unchanged parts, do NOT return only a small snippet, and do NOT return only modified lines. Preserve the original code structure. If no changes are needed, return the original code in full.>,
+  "changesMade": [<string explaining a change made. Detail the line/section changed, the reason for the change, and the issue fixed in simple, beginner-friendly terms.>, ...],
+  "complexityAnalysis": <string with brief time and space complexity explanations, e.g. "Time Complexity: O(n), Space Complexity: O(1)">,
   "beginnerExplanation": <string containing a simple, friendly, easy-to-understand tutorial explanation of how the code works, what issues were found, and why the corrections help their learning>
 }
 
-
-Important Instructions:
+Very important instructions:
 1. Do not run, execute, or compile the code. Treat it strictly as text.
 2. Ensure the response is valid JSON.
-3. Be supportive, positive, and encourage the student. Keep explanations easy for beginners.
-4. If the code is empty or not code at all (just gibberish), return a score of 0, list bugs explaining that valid code is needed, and encourage them to paste valid code.
+3. Return the full corrected code, not only the changed lines. Do not omit unchanged parts or summarize the corrected code.
+4. If the original code has multiple languages, fullCorrectedCode should preserve all language sections and correct each section separately keeping section headings.
+5. If the AI cannot safely correct something, it should keep that part and add a comment explaining what needs to be fixed.
 
 Code to analyze:
 ${codeText}`;
@@ -136,7 +185,18 @@ ${codeText}`;
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Gemini API call failed:', errorText);
-      return res.status(500).json({ error: 'AI review failed. Please try again later.' });
+      let apiErrorMessage = errorText;
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.error && errorJson.error.message) {
+          apiErrorMessage = errorJson.error.message;
+        }
+      } catch (_) {
+        // Not a JSON response or doesn't match error structure
+      }
+      return res.status(response.status || 500).json({ 
+        error: `Gemini API call failed: ${apiErrorMessage}` 
+      });
     }
 
     const responseData = await response.json();
@@ -145,20 +205,24 @@ ${codeText}`;
     const responseText = responseData.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!responseText) {
       console.error('Invalid response format from Gemini API:', responseData);
-      return res.status(500).json({ error: 'AI review failed. Please try again later.' });
+      return res.status(500).json({ 
+        error: 'Invalid response format from Gemini API. Candidate or text block was missing.' 
+      });
     }
 
     // Clean and parse JSON
     let parsedResult;
+    let cleanedText = responseText.trim();
     try {
-      let cleanedText = responseText.trim();
       if (cleanedText.startsWith('```')) {
         cleanedText = cleanedText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
       }
       parsedResult = JSON.parse(cleanedText.trim());
     } catch (parseError) {
       console.error('Error parsing JSON from Gemini response text:', responseText, parseError);
-      return res.status(500).json({ error: 'AI review failed. Please try again later.' });
+      return res.status(500).json({ 
+        error: `Failed to parse AI review output as JSON: ${parseError.message}. Raw output snippet: ${cleanedText.substring(0, 150)}...` 
+      });
     }
 
     // Verify all necessary keys exist, fallback if not
@@ -168,6 +232,8 @@ ${codeText}`;
       suggestions: Array.isArray(parsedResult.suggestions) ? parsedResult.suggestions : [],
       securityIssues: Array.isArray(parsedResult.securityIssues) ? parsedResult.securityIssues : [],
       optimizedCode: typeof parsedResult.optimizedCode === 'string' ? parsedResult.optimizedCode : codeText,
+      fullCorrectedCode: typeof parsedResult.fullCorrectedCode === 'string' ? parsedResult.fullCorrectedCode : (typeof parsedResult.optimizedCode === 'string' ? parsedResult.optimizedCode : codeText),
+      changesMade: Array.isArray(parsedResult.changesMade) ? parsedResult.changesMade : [],
       complexityAnalysis: typeof parsedResult.complexityAnalysis === 'string' ? parsedResult.complexityAnalysis : 'Complexity analysis not available.',
       beginnerExplanation: typeof parsedResult.beginnerExplanation === 'string' ? parsedResult.beginnerExplanation : 'No beginner explanation available.'
     };
@@ -175,7 +241,7 @@ ${codeText}`;
     return res.json(finalResult);
   } catch (error) {
     console.error('Unhandled server error during code review:', error);
-    return res.status(500).json({ error: 'Something went wrong. Please try again.' });
+    return res.status(500).json({ error: `Server error: ${error.message}` });
   }
 });
 

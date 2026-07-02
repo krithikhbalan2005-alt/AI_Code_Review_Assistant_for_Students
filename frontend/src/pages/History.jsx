@@ -163,10 +163,12 @@ export default function History() {
       printSection("3. Security Auditing", report.securityIssues);
       printSection("4. Time & Space Complexity", report.complexityAnalysis);
       printSection("5. Learning Explanations (Tutor Notes)", report.beginnerExplanation);
-      printSection("6. Corrected Code (Error Removed)", report.optimizedCode, true);
-
+      printSection("6. Before - Original Submitted Code", report.originalCode, true);
+      printSection("7. After - Full Corrected Code", report.fullCorrectedCode || report.optimizedCode, true);
+      printSection("8. What Changed?", report.changesMade || [], false);
 
       pdf.save(`CodeReview_Report_${reportId.substring(0, 8)}.pdf`);
+
       showToast('Report downloaded successfully', 'success');
     } catch (err) {
       console.error('PDF creation error in history list:', err);

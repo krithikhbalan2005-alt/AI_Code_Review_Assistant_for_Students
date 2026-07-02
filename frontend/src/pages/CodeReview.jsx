@@ -93,7 +93,8 @@ export default function CodeReview() {
     try {
       // 2. Call Express Backend (AI Bridge)
       // Call backend route directly (without exposing keys in frontend)
-      const response = await fetch('http://localhost:5000/api/review-code', {
+      const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${backendUrl}/api/review-code`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -105,7 +106,20 @@ export default function CodeReview() {
       });
 
       if (!response.ok) {
-        throw new Error('Backend review endpoint returned non-200 response.');
+        let errorMessage = 'AI review failed. Please try again later.';
+        try {
+          const errorData = await response.json();
+          if (errorData && errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch (_) {
+          // If response is not JSON, try reading as text
+          try {
+            const errorText = await response.text();
+            if (errorText) errorMessage = errorText;
+          } catch (__) {}
+        }
+        throw new Error(errorMessage);
       }
 
       const reviewData = await response.json();
@@ -135,11 +149,14 @@ export default function CodeReview() {
         suggestions: reviewData.suggestions,
         securityIssues: reviewData.securityIssues,
         optimizedCode: reviewData.optimizedCode,
+        fullCorrectedCode: reviewData.fullCorrectedCode,
+        changesMade: reviewData.changesMade,
         complexityAnalysis: reviewData.complexityAnalysis,
         beginnerExplanation: reviewData.beginnerExplanation,
         originalCode: codeText,
         createdAt: new Date().toISOString(),
       });
+
 
       // 5. Save Review History Log internally
       const historyRef = doc(collection(db, 'reviewHistory'));
@@ -189,7 +206,7 @@ export default function CodeReview() {
         console.error('Failed to log failed submission in database:', dbErr);
       }
 
-      showToast('AI review failed. Please try again later.', 'error');
+      showToast(err.message || 'AI review failed. Please try again later.', 'error');
     } finally {
       setLoading(false);
     }

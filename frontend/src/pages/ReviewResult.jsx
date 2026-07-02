@@ -6,7 +6,7 @@ import { useToast } from '../components/ToastContext';
 import { jsPDF } from 'jspdf';
 import { 
   Award, AlertCircle, Sparkles, CheckCircle2, ChevronLeft, Download, 
-  BookOpen, Code2, ShieldAlert, Cpu, Check, Copy 
+  BookOpen, Code2, ShieldAlert, Cpu, Check, Copy, AlertTriangle, ShieldCheck
 } from 'lucide-react';
 
 export default function ReviewResult() {
@@ -17,8 +17,11 @@ export default function ReviewResult() {
 
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState(null);
+  
+  // Clipboard copy states
   const [copiedOriginal, setCopiedOriginal] = useState(false);
-  const [copiedOptimized, setCopiedOptimized] = useState(false);
+  const [copiedCorrected, setCopiedCorrected] = useState(false);
+  const [copiedExplanation, setCopiedExplanation] = useState(false);
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -64,15 +67,63 @@ export default function ReviewResult() {
   }, [reportId, navigate, showToast]);
 
   const copyToClipboard = (text, type) => {
+    if (!text) return;
     navigator.clipboard.writeText(text);
     if (type === 'original') {
       setCopiedOriginal(true);
       setTimeout(() => setCopiedOriginal(false), 2000);
-    } else {
-      setCopiedOptimized(true);
-      setTimeout(() => setCopiedOptimized(false), 2000);
+    } else if (type === 'corrected') {
+      setCopiedCorrected(true);
+      setTimeout(() => setCopiedCorrected(false), 2000);
+    } else if (type === 'explanation') {
+      setCopiedExplanation(true);
+      setTimeout(() => setCopiedExplanation(false), 2000);
     }
-    showToast('Code copied to clipboard', 'success');
+    showToast('Copied to clipboard', 'success');
+  };
+
+  // Helper to trigger download of corrected code as local file
+  const handleDownloadCode = (code, lang) => {
+    try {
+      if (!code) {
+        showToast('No corrected code available to download.', 'error');
+        return;
+      }
+
+      let ext = '.txt';
+      let defaultName = 'corrected_code';
+      const normalizedLang = (lang || '').toLowerCase();
+
+      if (normalizedLang.includes('python')) {
+        ext = '.py';
+      } else if (normalizedLang.includes('java') && !normalizedLang.includes('javascript')) {
+        ext = '.java';
+        defaultName = 'Main';
+      } else if (normalizedLang.includes('javascript') || normalizedLang.includes('js')) {
+        ext = '.js';
+      } else if (normalizedLang.includes('c++') || normalizedLang.includes('cpp')) {
+        ext = '.cpp';
+      } else if (normalizedLang.includes('c') && normalizedLang === 'c') {
+        ext = '.c';
+      } else if (normalizedLang.includes('php')) {
+        ext = '.php';
+      }
+
+      const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${defaultName}${ext}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      showToast('Report downloaded successfully', 'success');
+    } catch (err) {
+      console.error('File download error:', err);
+      showToast('Something went wrong. Please try again.', 'error');
+    }
   };
 
   // Generate and Download PDF Report locally via jsPDF
@@ -111,7 +162,6 @@ export default function ReviewResult() {
 
       // Section printing function with autowrap and page breaks
       const printSection = (title, items, isCode = false) => {
-        // Safe check for page break before section title
         if (yOffset > 250) {
           doc.addPage();
           yOffset = 20;
@@ -129,7 +179,7 @@ export default function ReviewResult() {
 
         if (Array.isArray(items)) {
           if (items.length === 0) {
-            doc.text("• No issues detected.", leftMargin + 4, yOffset);
+            doc.text("• No items recorded.", leftMargin + 4, yOffset);
             yOffset += 6;
           } else {
             items.forEach((item) => {
@@ -176,8 +226,9 @@ export default function ReviewResult() {
       printSection("3. Security Auditing", report.securityIssues);
       printSection("4. Time & Space Complexity", report.complexityAnalysis);
       printSection("5. Learning Explanations (Tutor Notes)", report.beginnerExplanation);
-      printSection("6. Corrected Code (Error Removed)", report.optimizedCode, true);
-
+      printSection("6. Before - Original Submitted Code", report.originalCode, true);
+      printSection("7. After - Full Corrected Code", report.fullCorrectedCode || report.optimizedCode, true);
+      printSection("8. What Changed?", report.changesMade || [], false);
 
       doc.save(`CodeReview_Report_${reportId.substring(0, 8)}.pdf`);
       showToast('Report downloaded successfully', 'success');
@@ -206,7 +257,7 @@ export default function ReviewResult() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Navigation */}
       <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
         <Link to="/dashboard" className="flex items-center gap-1.5 text-sm font-semibold text-slate-400 hover:text-slate-200 transition-colors">
@@ -264,9 +315,8 @@ export default function ReviewResult() {
             </div>
           </div>
 
-          {/* Tabbed Review Items */}
+          {/* Core Metrics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            
             {/* Bugs Card */}
             <div className="glass-panel p-5 rounded-xl border border-slate-800 flex flex-col">
               <h4 className="text-sm font-bold text-red-400 mb-3 flex items-center gap-1.5 uppercase tracking-wider">
@@ -317,46 +367,92 @@ export default function ReviewResult() {
                 )}
               </ul>
             </div>
+          </div>
+
+          {/* Code Comparison Panels */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left Column: Before */}
+            <div className="glass-panel rounded-xl overflow-hidden border border-slate-800 opacity-60 flex flex-col">
+              <div className="bg-dark-900/80 border-b border-slate-800/80 px-4 py-3 flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono">
+                  Before - Original Submitted Code
+                </span>
+                <button 
+                  onClick={() => copyToClipboard(report.originalCode, 'original')}
+                  className="text-slate-400 hover:text-slate-200 transition-colors p-1 flex items-center gap-1 text-xs"
+                >
+                  {copiedOriginal ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                  Copy Original Code
+                </button>
+              </div>
+              <pre className="p-4 overflow-x-auto text-xs code-font text-slate-400 bg-slate-950/40 leading-relaxed max-h-[500px] min-h-[250px] flex-grow">
+                <code>{report.originalCode}</code>
+              </pre>
+            </div>
+
+            {/* Right Column: After */}
+            <div className="glass-panel rounded-xl overflow-hidden border border-slate-800 flex flex-col">
+              <div className="bg-dark-900/80 border-b border-slate-800/80 px-4 py-3 flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                  <Code2 className="h-4 w-4 text-purple-400" />
+                  After - Full Corrected Code
+                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button 
+                    onClick={() => handleDownloadCode(report.fullCorrectedCode || report.optimizedCode, report.language)}
+                    className="text-slate-400 hover:text-slate-200 transition-colors p-1 flex items-center gap-1 text-[10px] sm:text-xs border border-slate-850 px-2 py-0.5 rounded bg-slate-900/40"
+                    title="Download full code as local file"
+                  >
+                    <Download className="h-3 w-3" />
+                    Download Corrected Code
+                  </button>
+                  <button 
+                    onClick={() => copyToClipboard(report.fullCorrectedCode || report.optimizedCode, 'corrected')}
+                    className="text-slate-400 hover:text-slate-200 transition-colors p-1 flex items-center gap-1 text-xs"
+                  >
+                    {copiedCorrected ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                    Copy Full Corrected Code
+                  </button>
+                </div>
+              </div>
+              <pre className="p-4 overflow-x-auto text-xs code-font text-slate-300 bg-slate-950/60 leading-relaxed max-h-[500px] min-h-[250px] flex-grow">
+                <code>{report.fullCorrectedCode || report.optimizedCode}</code>
+              </pre>
+            </div>
+          </div>
+
+          {/* What Changed Section */}
+          <div className="glass-panel p-6 rounded-xl border border-blue-500/20 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl pointer-events-none"></div>
             
-          </div>
-
-          {/* Corrected Code Display */}
-          <div className="glass-panel rounded-xl overflow-hidden border border-slate-800">
-            <div className="bg-dark-900/80 border-b border-slate-800/80 px-4 py-3 flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                <Code2 className="h-4 w-4 text-purple-400" />
-                Corrected Code (Error Removed)
-              </span>
-              <button 
-                onClick={() => copyToClipboard(report.optimizedCode, 'optimized')}
-                className="text-slate-400 hover:text-slate-200 transition-colors p-1 flex items-center gap-1 text-xs"
+            <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-3 flex-wrap gap-2">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-blue-400" />
+                What Changed? (Correction Log)
+              </h3>
+              <button
+                onClick={() => copyToClipboard(report.changesMade ? report.changesMade.join('\n') : '', 'explanation')}
+                className="text-slate-400 hover:text-slate-200 transition-colors p-1 flex items-center gap-1 text-xs border border-slate-850 px-2 py-0.5 rounded bg-slate-900/40"
               >
-                {copiedOptimized ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-                Copy Solution
+                {copiedExplanation ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                Copy Explanation
               </button>
             </div>
-            <pre className="p-5 overflow-x-auto text-xs code-font text-slate-300 bg-slate-950/60 leading-relaxed max-h-[500px] min-h-[200px]">
-              <code>{report.optimizedCode}</code>
-            </pre>
-          </div>
-
-          {/* Original Student Code Display */}
-          <div className="glass-panel rounded-xl overflow-hidden border border-slate-800 opacity-50">
-            <div className="bg-dark-900/80 border-b border-slate-800/80 px-4 py-3 flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                Original Submitted Code
-              </span>
-              <button 
-                onClick={() => copyToClipboard(report.originalCode, 'original')}
-                className="text-slate-400 hover:text-slate-200 transition-colors p-1 flex items-center gap-1 text-xs"
-              >
-                {copiedOriginal ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-                Copy Original
-              </button>
-            </div>
-            <pre className="p-4 overflow-x-auto text-xs code-font text-slate-400 bg-slate-950/40 leading-relaxed max-h-32">
-              <code>{report.originalCode}</code>
-            </pre>
+            
+            <ul className="space-y-3">
+              {report.changesMade && report.changesMade.length > 0 ? (
+                report.changesMade.map((change, i) => (
+                  <li key={i} className="flex gap-3 text-sm text-slate-300 leading-relaxed">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-blue-400 text-xs font-bold font-mono">
+                      {i + 1}
+                    </span>
+                    <span>{change}</span>
+                  </li>
+                ))
+              ) : (
+                <li className="text-sm text-slate-500 italic">No specific correction logs recorded for this report.</li>
+              )}
+            </ul>
           </div>
 
         </div>
@@ -365,4 +461,3 @@ export default function ReviewResult() {
     </div>
   );
 }
-
