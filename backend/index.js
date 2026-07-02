@@ -157,9 +157,9 @@ Very important instructions:
 Code to analyze:
 ${codeText}`;
 
-    // Call the Gemini 2.0 Flash API using native fetch
+    // Call the Gemini 2.5 Flash API using native fetch
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: {
